@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import random
+import matplotlib.pyplot as plt
 
 import numpy.random
 
@@ -9,6 +10,7 @@ GENE_SIZE = 100
 C = 0.001
 RNG = np.random.default_rng()
 CROSSOVER_POINT = 40
+GENERATIONS = 100
 
 
 def init_gene(gene_size: int):
@@ -43,7 +45,7 @@ def decode_greycode(encoded: np.ndarray, original_arr: np.ndarray):
 
 
 def mutate(gene: np.ndarray):
-    index = random.randint(0, len(gene)-1)
+    index = random.randint(0, len(gene) - 1)
     gene[index] = 1 if gene[index] == 0 else 0
     return gene
 
@@ -72,9 +74,7 @@ def genetic_evolution(r: float, m: int, fitness_threshold: float):
     volumes = init_volumes(GENE_SIZE)
     fitness_arr = calculate_fitness_array(population, volumes)
     while max(fitness_arr) < fitness_threshold:
-        best_gene_index = fitness_arr.index(max(fitness_arr))
-        best_gene = population[best_gene_index]
-        #print(calculate_present_bag_weight(best_gene, volumes))
+        # print(calculate_present_bag_weight(best_gene, volumes))
         print(max(fitness_arr))
         probabilities = calculate_probabilities(fitness_arr)
         selection = RNG.choice(population, int((1 - r) * POPULATION_SIZE), p=probabilities)
@@ -82,7 +82,8 @@ def genetic_evolution(r: float, m: int, fitness_threshold: float):
         # optional: best_gene = population[best_gene_index]
         # optional: next_generation = selection[:-1] + best_gene
         selection_fitness_arr = calculate_fitness_array(selection, volumes)
-        selection_probabilities = calculate_probabilities(selection_fitness_arr) # [probabilities[population.index(gene.tolist())] for gene in selection]
+        selection_probabilities = calculate_probabilities(
+            selection_fitness_arr)  # [probabilities[population.index(gene.tolist())] for gene in selection]
         parents = [RNG.choice(selection, 2, p=selection_probabilities, replace=False) for i in
                    range(int(r * POPULATION_SIZE
                              / 2))]
@@ -90,10 +91,62 @@ def genetic_evolution(r: float, m: int, fitness_threshold: float):
         next_generation: np.ndarray = np.concatenate([selection, np.concatenate(children)])
         mutation_candidates = RNG.choice(next_generation, m, replace=False)
         for candidate in mutation_candidates:
-            next_generation[next_generation.tolist().index(candidate.tolist())] = decode_greycode(mutate(encode_greycode(candidate)), candidate)
+            next_generation[next_generation.tolist().index(candidate.tolist())] = decode_greycode(
+                mutate(encode_greycode(candidate)), candidate)
         population = next_generation.tolist()
         fitness_arr = calculate_fitness_array(population, volumes)
 
+    best_gene_index = fitness_arr.index(max(fitness_arr))
+    best_gene = population[best_gene_index]
+    return best_gene
+
+
+def genetic_evolution_with_plot(r: float, m: int, generations: int = GENERATIONS):
+    """
+    execute a genetic algorithm to maximize the fitness function
+    :param r: crossover rate = share of genes to replace with crossover per generation
+    :param m: mutation rate = # of genes to mutate per generation
+    :param fitness_threshold:
+    :return: an array of the best fitness after each generation
+    """
+    population = init_population(POPULATION_SIZE, GENE_SIZE)
+    volumes = init_volumes(GENE_SIZE)
+    fitness_arr = calculate_fitness_array(population, volumes)
+    max_fitness_per_generation = []
+    for i in range(generations):
+        max_fitness_per_generation.append(max(fitness_arr))
+        probabilities = calculate_probabilities(fitness_arr)
+        selection = RNG.choice(population, int((1 - r) * POPULATION_SIZE), p=probabilities)
+        selection_fitness_arr = calculate_fitness_array(selection, volumes)
+        selection_probabilities = calculate_probabilities(
+            selection_fitness_arr)  # [probabilities[population.index(gene.tolist())] for gene in selection]
+        parents = [RNG.choice(selection, 2, p=selection_probabilities, replace=False) for i in
+                   range(int(r * POPULATION_SIZE
+                             / 2))]
+        children = [crossover(parent[0], parent[1]) for parent in parents]
+        next_generation: np.ndarray = np.concatenate([selection, np.concatenate(children)])
+        mutation_candidates = RNG.choice(next_generation, m, replace=False)
+        for candidate in mutation_candidates:
+            next_generation[next_generation.tolist().index(candidate.tolist())] = decode_greycode(
+                mutate(encode_greycode(candidate)), candidate)
+        population = next_generation.tolist()
+        fitness_arr = calculate_fitness_array(population, volumes)
+    return max_fitness_per_generation
+
 
 if __name__ == "__main__":
-    genetic_evolution(0.5, 200, 0.9)
+    # genetic_evolution(0.5, 200, 0.9)
+    x_points = np.array(range(GENERATIONS))
+    y_points_1 = genetic_evolution_with_plot(0.5, 200) # schlechtester C-wert
+    C = 0.01
+    y_points_2 = genetic_evolution_with_plot(0.5, 200)
+    C = 0.1 # bester lauf
+    y_points_3 = genetic_evolution_with_plot(0.5, 200)
+    plt.plot(x_points, y_points_1, color='r', label='C=0.001')
+    plt.plot(x_points, y_points_2, color='g', label='C=0.01')
+    plt.plot(x_points, y_points_3, color='b', label='C=0.1')
+    plt.xlabel("Generations")
+    plt.ylabel("Fitness")
+    plt.legend()
+    plt.show()
+    print("finished")
