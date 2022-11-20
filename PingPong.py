@@ -11,6 +11,8 @@ MAX_ARR = [MAX_X_RACKET, MAX_X_BALL, MAX_Y_BALL, MAX_V_X_BALL, MAX_V_Y_BALL]
 EPSILON = 0.001
 ALPHA = 0.05  # Higher alpha values make Q-values change faster
 GAMMA = 0.9  # Higher gamma looks in broader future
+USE_TRAINED_MODEL = True
+SAVE_MODEL = True
 
 
 # possible actions = -1: move left, 0: stay, 1: move right
@@ -42,12 +44,14 @@ def select_action(state: int, q_table: np.ndarray, epsilon: float = EPSILON):
     return -1 if action == 2 else action
 
 
-def update_q_table(q_table: np.ndarray, state: int, next_state: int, action: int, reward: int, gamma: float = GAMMA, alpha: float = ALPHA):
-    q_table[state][action] = q_table[state][action] + alpha * (reward * gamma * max(q_table[next_state]) - q_table[state][action])
+def update_q_table(q_table: np.ndarray, state: int, next_state: int, action: int, reward: int, gamma: float = GAMMA,
+                   alpha: float = ALPHA):
+    q_table[state][action] = q_table[state][action] + alpha * (
+                reward * gamma * max(q_table[next_state]) - q_table[state][action])
 
 
 # initialize Q Table with all possible states
-q_table = np.random.rand(get_state(MAX_ARR), 3)
+q_table = np.genfromtxt('Q_TABLE.csv', delimiter=';') if USE_TRAINED_MODEL else np.random.rand(get_state(MAX_ARR), 3)
 
 pygame.init()
 screen = pygame.display.set_mode((240, 260))
@@ -100,9 +104,10 @@ while continueGame:
     update_q_table(q_table, initial_state, next_state, action, reward)
 
     pygame.display.flip()
-    clock.tick(30)  # Refresh-Zeiten festlegen 60 FPS
+    clock.tick(480)  # Refresh-Zeiten festlegen 60 FPS
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            print("ende")
+            if SAVE_MODEL:
+                np.savetxt("Q_TABLE.csv", q_table, delimiter=';')
             pygame.quit()
             continueGame = False
