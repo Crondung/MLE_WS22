@@ -9,7 +9,7 @@ MAX_V_Y_BALL = 1 + 1
 MAX_X_RACKET = 11 + 1
 MAX_ARR = [MAX_X_RACKET, MAX_X_BALL, MAX_Y_BALL, MAX_V_X_BALL, MAX_V_Y_BALL]
 EPSILON = 0.001
-ALPHA = 0.05  # Higher alpha values make Q-values change faster
+ALPHA = 0.01  # Higher alpha values make Q-values change faster
 GAMMA = 0.9  # Higher gamma looks in broader future
 USE_TRAINED_MODEL = True
 SAVE_MODEL = True
@@ -32,7 +32,7 @@ def select_action(state: int, q_table: np.ndarray, epsilon: float = EPSILON):
     action = best_action
     if n <= epsilon:
         print('chose epsilon')
-        actions = [0, 1, 2]
+        actions = list(range(11))
         actions.pop(best_action)
         action = random.choice(actions)
     """
@@ -41,7 +41,7 @@ def select_action(state: int, q_table: np.ndarray, epsilon: float = EPSILON):
     q_s[1] = move right, which is an x change of 1
     q_s[2] = move left, which is an x change of -1
     """
-    return -1 if action == 2 else action
+    return action
 
 
 def update_q_table(q_table: np.ndarray, state: int, next_state: int, action: int, reward: int, gamma: float = GAMMA,
@@ -51,7 +51,7 @@ def update_q_table(q_table: np.ndarray, state: int, next_state: int, action: int
 
 
 # initialize Q Table with all possible states
-q_table = np.genfromtxt('Q_TABLE.csv', delimiter=';') if USE_TRAINED_MODEL else np.random.rand(get_state(MAX_ARR), 3)
+q_table = np.genfromtxt('Q_TABLE.csv', delimiter=';') if USE_TRAINED_MODEL else np.random.rand(get_state(MAX_ARR), 11)
 
 pygame.init()
 screen = pygame.display.set_mode((240, 260))
@@ -72,10 +72,8 @@ while continueGame:
 
     initial_state = get_state([x_racket, x_ball, y_ball, vx_ball, vy_ball])
 
-    action = select_action(initial_state, q_table)
+    x_racket = select_action(initial_state, q_table)
 
-    if (x_racket + 4 + action <= 12) & (x_racket + action >= 0):
-        x_racket += action
     text = font.render("score:" + str(score), True, (255, 255, 255))
     textrect = text.get_rect()
     textrect.centerx = screen.get_rect().centerx
@@ -101,10 +99,10 @@ while continueGame:
             reward = -1
 
     next_state = get_state([x_racket, x_ball, y_ball, vx_ball, vy_ball])
-    update_q_table(q_table, initial_state, next_state, action, reward)
+    update_q_table(q_table, initial_state, next_state, x_racket, reward)
 
     pygame.display.flip()
-    clock.tick(480)  # Refresh-Zeiten festlegen 60 FPS
+    clock.tick(30)  # Refresh-Zeiten festlegen 60 FPS
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             if SAVE_MODEL:
